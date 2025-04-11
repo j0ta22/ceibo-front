@@ -22,22 +22,14 @@ interface Producto {
 
 interface Usuario {
   telegram_id: number;
-  username: string;
+  username: string | null;
   wallet: string;
-  productos: Producto[];
 }
 
 export default function Profile() {
   const [perfil, setPerfil] = useState<Usuario | null>(null);
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
-  const [editando, setEditando] = useState<Producto | null>(null);
-  const [nuevoProducto, setNuevoProducto] = useState<Producto>({
-    id: 0,
-    nombre: "",
-    descripcion: "",
-    precio: 0,
-  });
 
   // Obtener datos de Telegram
   const webApp = window.Telegram?.WebApp;
@@ -50,123 +42,88 @@ export default function Profile() {
   console.log('InitData:', initData);
   console.log('=== Fin Datos de Telegram ===');
 
-  useEffect(() => {
-    const cargarPerfil = async () => {
-      try {
-        setIsLoading(true);
-        console.log('Iniciando carga de perfil...');
-        
-        if (!webApp) {
-          console.error('Telegram WebApp no está disponible');
-          setError("No se detectó la aplicación de Telegram.");
-          return;
-        }
-
-        if (!user?.id) {
-          console.error('No se encontró el ID de usuario de Telegram');
-          setError("No se detectó sesión de Telegram.");
-          return;
-        }
-
-        if (!initData) {
-          console.error('No se encontró initData de Telegram');
-          setError("No se detectaron datos de inicialización de Telegram.");
-          return;
-        }
-
-        console.log('Realizando petición a la API...');
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/users/telegram/${user.id}`,
-          {
-            withCredentials: true,
-            headers: {
-              "Content-Type": "application/json",
-              "X-Telegram-Init-Data": initData,
-            },
-          }
-        );
-
-        console.log('Respuesta de la API:', res.data);
-        
-        if (!res.data) {
-          console.error('La respuesta de la API está vacía');
-          setError("No se pudieron obtener los datos del perfil.");
-          return;
-        }
-
-        setPerfil(res.data);
-        setError("");
-      } catch (err) {
-        console.error('Error detallado:', err);
-        
-        if (axios.isAxiosError(err)) {
-          if (err.response) {
-            console.error('Error de respuesta:', err.response.data);
-            console.error('Status:', err.response.status);
-            console.error('Headers:', err.response.headers);
-            
-            if (err.response.status === 404) {
-              setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
-            } else if (err.response.status === 401) {
-              setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
-            } else if (err.response.status === 500) {
-              setError("Error del servidor. Por favor, intenta más tarde.");
-            } else {
-              setError(`Error al cargar el perfil: ${err.response.data?.detail || 'Error desconocido'}`);
-            }
-          } else if (err.request) {
-            console.error('Error de red:', err.request);
-            setError("Error de conexión. Por favor, verifica tu conexión a internet.");
-          } else {
-            console.error('Error de configuración:', err.message);
-            setError("Error al configurar la petición. Por favor, intenta nuevamente.");
-          }
-        } else {
-          console.error('Error no relacionado con Axios:', err);
-          setError("Error desconocido al cargar el perfil.");
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    cargarPerfil();
-  }, [webApp, user, initData]);
-
-  const handleEditarClick = (producto: Producto) => {
-    setEditando(producto);
-    setNuevoProducto(producto);
-  };
-
-  const handleEditarProducto = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const cargarPerfil = async () => {
     try {
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/products/${nuevoProducto.id}`,
+      setIsLoading(true);
+      console.log('Iniciando carga de perfil...');
+      
+      if (!webApp) {
+        console.error('Telegram WebApp no está disponible');
+        setError("No se detectó la aplicación de Telegram.");
+        return;
+      }
+
+      if (!user?.id) {
+        console.error('No se encontró el ID de usuario de Telegram');
+        setError("No se detectó sesión de Telegram.");
+        return;
+      }
+
+      if (!initData) {
+        console.error('No se encontró initData de Telegram');
+        setError("No se detectaron datos de inicialización de Telegram.");
+        return;
+      }
+
+      console.log('Realizando petición a la API...');
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/users/telegram/${user.id}`,
         {
-          nombre: nuevoProducto.nombre,
-          descripcion: nuevoProducto.descripcion,
-          precio: nuevoProducto.precio,
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Telegram-Init-Data": initData,
+          },
         }
       );
-      setEditando(null);
-      cargarPerfil(); // Refrescar datos
+
+      console.log('Respuesta de la API:', res.data);
+      
+      if (!res.data) {
+        console.error('La respuesta de la API está vacía');
+        setError("No se pudieron obtener los datos del perfil.");
+        return;
+      }
+
+      setPerfil(res.data);
+      setError("");
     } catch (err) {
-      alert("Error al editar el producto");
+      console.error('Error detallado:', err);
+      
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          console.error('Error de respuesta:', err.response.data);
+          console.error('Status:', err.response.status);
+          console.error('Headers:', err.response.headers);
+          
+          if (err.response.status === 404) {
+            setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
+          } else if (err.response.status === 401) {
+            setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
+          } else if (err.response.status === 500) {
+            setError("Error del servidor. Por favor, intenta más tarde.");
+          } else {
+            setError(`Error al cargar el perfil: ${err.response.data?.detail || 'Error desconocido'}`);
+          }
+        } else if (err.request) {
+          console.error('Error de red:', err.request);
+          setError("Error de conexión. Por favor, verifica tu conexión a internet.");
+        } else {
+          console.error('Error de configuración:', err.message);
+          setError("Error al configurar la petición. Por favor, intenta nuevamente.");
+        }
+      } else {
+        console.error('Error no relacionado con Axios:', err);
+        setError("Error desconocido al cargar el perfil.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleEliminarProducto = async (id: number) => {
-    const confirmar = confirm("¿Estás seguro que querés eliminar este producto?");
-    if (!confirmar) return;
-
-    try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/products/${id}`);
-      cargarPerfil(); // Refrescar productos
-    } catch (err) {
-      alert("Error al eliminar el producto");
-    }
-  };
+  useEffect(() => {
+    cargarPerfil();
+  }, [webApp, user, initData]);
 
   if (isLoading) {
     return (
