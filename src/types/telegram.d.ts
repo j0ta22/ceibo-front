@@ -30,7 +30,12 @@ declare global {
 
   interface Window {
     Telegram: {
-      WebApp: TelegramWebApp;
+      WebApp: {
+        ready: () => void;
+        expand: () => void;
+        close: () => void;
+        // Agrega aquí otros métodos que necesites
+      };
     };
   }
 }
