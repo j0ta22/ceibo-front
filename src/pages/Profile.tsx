@@ -41,6 +41,7 @@ export default function Profile() {
   const cargarPerfil = async () => {
     try {
       console.log('Intentando cargar perfil para usuario:', user?.id);
+      console.log('Init data:', initData);
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/users/telegram/${user?.id}`,
         {
@@ -54,6 +55,13 @@ export default function Profile() {
       setPerfil(res.data);
     } catch (err) {
       console.error('Error al cargar perfil:', err);
+      if (axios.isAxiosError(err)) {
+        console.error('Detalles del error:', {
+          status: err.response?.status,
+          data: err.response?.data,
+          headers: err.response?.headers
+        });
+      }
       setError("No se pudo cargar el perfil.");
     }
   };
