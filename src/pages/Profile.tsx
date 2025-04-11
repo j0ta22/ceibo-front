@@ -42,10 +42,14 @@ export default function Profile() {
   console.log('InitData:', initData);
   console.log('=== Fin Datos de Telegram ===');
 
-  const cargarPerfil = async () => {
+  const cargarPerfil = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      console.log('Iniciando carga de perfil...');
+      console.log('=== Datos de Telegram ===');
+      console.log('WebApp disponible:', !!webApp);
+      console.log('Usuario:', user);
+      console.log('InitData:', initData);
+      console.log('=== Fin Datos de Telegram ===');
       
       if (!webApp) {
         console.error('Telegram WebApp no está disponible');
@@ -66,7 +70,7 @@ export default function Profile() {
       }
 
       console.log('Realizando petición a la API...');
-      const res = await axios.get(
+      const res = await axios.get<Usuario>(
         `${import.meta.env.VITE_API_URL}/users/telegram/${user.id}`,
         {
           withCredentials: true,
@@ -122,7 +126,7 @@ export default function Profile() {
   };
 
   useEffect(() => {
-    cargarPerfil();
+    void cargarPerfil();
   }, [webApp, user, initData]);
 
   if (isLoading) {
