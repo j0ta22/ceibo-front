@@ -40,9 +40,24 @@ export default function Profile() {
 
   const cargarPerfil = async () => {
     try {
-      // Primero, obtener información de depuración
-      const debugRes = await axios.get(
-        `${import.meta.env.VITE_API_URL}/users/debug`,
+      // Primero, verificar el estado de la base de datos
+      const dbCheckRes = await axios.get(
+        `${import.meta.env.VITE_API_URL}/users/db-check`
+      );
+      
+      if (dbCheckRes.data.status === "error") {
+        setError(`Error en la base de datos: ${dbCheckRes.data.error}`);
+        return;
+      }
+      
+      if (dbCheckRes.data.total_usuarios === 0) {
+        setError("No hay usuarios registrados en la base de datos. Por favor, crea una wallet desde el bot.");
+        return;
+      }
+      
+      // Si hay usuarios, intentar cargar el perfil
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/users/telegram/${user?.id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -51,33 +66,31 @@ export default function Profile() {
         }
       );
       
-      console.log('Información de depuración:', debugRes.data);
+      // Verificar que los datos necesarios estén presentes
+      if (!res.data || !res.data.telegram_id || !res.data.wallet) {
+        setError("Datos del perfil incompletos. Por favor, crea una wallet desde el bot.");
+        return;
+      }
       
-      // Si hay usuarios en la base de datos, intentar cargar el perfil
-      if (debugRes.data.total_usuarios > 0) {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/users/telegram/${user?.id}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              "X-Telegram-Init-Data": initData,
-            },
-          }
-        );
-        setPerfil(res.data);
-      } else {
-        setError("No hay usuarios registrados en la base de datos.");
-      }
+      // Asegurarse de que los productos estén inicializados
+      const perfilCompleto = {
+        ...res.data,
+        productos: res.data.productos || []
+      };
+      
+      setPerfil(perfilCompleto);
     } catch (err) {
-      console.error('Error al cargar perfil:', err);
       if (axios.isAxiosError(err)) {
-        console.error('Detalles del error:', {
-          status: err.response?.status,
-          data: err.response?.data,
-          headers: err.response?.headers
-        });
+        if (err.response?.status === 404) {
+          setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
+        } else if (err.response?.status === 403) {
+          setError("Error de autenticación. Por favor, intenta acceder desde el bot de Telegram.");
+        } else {
+          setError(`Error al cargar el perfil: ${err.response?.data?.detail || err.message}`);
+        }
+      } else {
+        setError("Error desconocido al cargar el perfil.");
       }
-      setError("No se pudo cargar el perfil.");
     }
   };
 
