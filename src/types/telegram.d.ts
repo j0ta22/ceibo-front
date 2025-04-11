@@ -26,16 +26,12 @@ declare global {
     isExpanded: boolean;
     onEvent: (eventType: string, callback: () => void) => void;
     offEvent: (eventType: string, callback: () => void) => void;
+    ready: () => void;
   }
 
   interface Window {
     Telegram: {
-      WebApp: {
-        ready: () => void;
-        expand: () => void;
-        close: () => void;
-        // Agrega aquí otros métodos que necesites
-      };
+      WebApp: TelegramWebApp;
     };
   }
 }
