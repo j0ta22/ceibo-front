@@ -35,7 +35,7 @@ interface DebugInfo {
 // Configurar Axios globalmente
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
-axios.defaults.timeout = 10000; // 10 segundos de timeout
+axios.defaults.timeout = 5000; // 5 segundos de timeout
 
 // Agregar interceptor para logs de todas las peticiones
 axios.interceptors.request.use(request => {
@@ -154,23 +154,10 @@ export default function Profile() {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
             },
-            timeout: 10000, // 10 segundos de timeout
+            timeout: 5000, // 5 segundos de timeout
           }
         );
         addDebugLog(`Test de conexión exitoso: ${JSON.stringify(testResponse.data)}`, 'success');
-        
-        // Verificar si la base de datos y el bot token están configurados
-        if (!testResponse.data.database_configured) {
-          addDebugLog('Error: La base de datos no está configurada', 'error');
-          setError("Error del servidor: La base de datos no está configurada.");
-          return;
-        }
-        
-        if (!testResponse.data.bot_token_configured) {
-          addDebugLog('Error: El token del bot no está configurado', 'error');
-          setError("Error del servidor: El token del bot no está configurado.");
-          return;
-        }
       } catch (testError) {
         addDebugLog('Error en test de conexión', 'error');
         if (axios.isAxiosError(testError)) {
