@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import FormCrearProducto from "../components/FormCrearProducto";
-
+import UpdateWallet from "../components/UpdateWallet";
 
 const tg = window.Telegram.WebApp;
 const user = tg.initDataUnsafe?.user;
@@ -99,11 +99,14 @@ export default function Profile() {
   return (
     <div className="max-w-xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-2">Hola @{perfil.username}</h2>
-      <p className="text-sm mb-4">
-        <strong>Wallet:</strong> {perfil.wallet}
-      </p>
+      
+      <UpdateWallet
+        telegramId={perfil.telegram_id}
+        currentWallet={perfil.wallet}
+        onWalletUpdated={cargarPerfil}
+      />
 
-      <h3 className="text-xl font-semibold mb-2">Tus productos:</h3>
+      <h3 className="text-xl font-semibold mb-2 mt-4">Tus productos:</h3>
       <ul className="space-y-4">
         {perfil.productos.map((p) => (
           <li
@@ -133,9 +136,9 @@ export default function Profile() {
         ))}
       </ul>
       <FormCrearProducto
-  telegramId={perfil.telegram_id}
-  onProductoCreado={cargarPerfil}
-/>
+        telegramId={perfil.telegram_id}
+        onProductoCreado={cargarPerfil}
+      />
 
       {editando && (
         <div className="mt-6 p-4 border rounded bg-gray-100">
