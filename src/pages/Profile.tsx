@@ -41,9 +41,16 @@ export default function Profile() {
   const cargarPerfil = async () => {
     try {
       console.log('Iniciando carga de perfil...');
-      console.log('Telegram ID:', user?.id);
+      console.log('Telegram WebApp:', window.Telegram?.WebApp);
+      console.log('Telegram User:', user);
       console.log('Init Data:', initData);
       console.log('API URL:', import.meta.env.VITE_API_URL);
+
+      if (!window.Telegram?.WebApp) {
+        console.error('Telegram WebApp no está disponible');
+        setError("No se detectó la aplicación de Telegram.");
+        return;
+      }
 
       if (!user?.id) {
         console.error('No se encontró el ID de usuario de Telegram');
@@ -54,6 +61,24 @@ export default function Profile() {
       if (!initData) {
         console.error('No se encontró initData de Telegram');
         setError("No se detectaron datos de inicialización de Telegram.");
+        return;
+      }
+
+      // Primero, verificar la conexión con la API
+      try {
+        const testResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/users/test-connection`,
+          {
+            withCredentials: true,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        console.log('Test de conexión:', testResponse.data);
+      } catch (testError) {
+        console.error('Error en test de conexión:', testError);
+        setError("No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet.");
         return;
       }
 
