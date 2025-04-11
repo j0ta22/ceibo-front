@@ -29,7 +29,8 @@ interface Usuario {
 
 export default function Profile() {
   const [perfil, setPerfil] = useState<Usuario | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
   const [editando, setEditando] = useState<Producto | null>(null);
   const [nuevoProducto, setNuevoProducto] = useState<Producto>({
     id: 0,
@@ -38,114 +39,99 @@ export default function Profile() {
     precio: 0,
   });
 
-  const cargarPerfil = async () => {
-    try {
-      console.log('Iniciando carga de perfil...');
-      console.log('Telegram WebApp:', window.Telegram?.WebApp);
-      console.log('Telegram User:', user);
-      console.log('Init Data:', initData);
-      console.log('API URL:', import.meta.env.VITE_API_URL);
+  // Obtener datos de Telegram
+  const webApp = window.Telegram?.WebApp;
+  const user = webApp?.initDataUnsafe?.user;
+  const initData = webApp?.initData;
 
-      if (!window.Telegram?.WebApp) {
-        console.error('Telegram WebApp no está disponible');
-        setError("No se detectó la aplicación de Telegram.");
-        return;
-      }
+  console.log('=== Datos de Telegram ===');
+  console.log('WebApp disponible:', !!webApp);
+  console.log('Usuario:', user);
+  console.log('InitData:', initData);
+  console.log('=== Fin Datos de Telegram ===');
 
-      if (!user?.id) {
-        console.error('No se encontró el ID de usuario de Telegram');
-        setError("No se detectó sesión de Telegram.");
-        return;
-      }
-
-      if (!initData) {
-        console.error('No se encontró initData de Telegram');
-        setError("No se detectaron datos de inicialización de Telegram.");
-        return;
-      }
-
-      // Primero, verificar la conexión con la API
+  useEffect(() => {
+    const cargarPerfil = async () => {
       try {
-        const testResponse = await axios.get(
-          `${import.meta.env.VITE_API_URL}/users/test-connection`,
+        setIsLoading(true);
+        console.log('Iniciando carga de perfil...');
+        
+        if (!webApp) {
+          console.error('Telegram WebApp no está disponible');
+          setError("No se detectó la aplicación de Telegram.");
+          return;
+        }
+
+        if (!user?.id) {
+          console.error('No se encontró el ID de usuario de Telegram');
+          setError("No se detectó sesión de Telegram.");
+          return;
+        }
+
+        if (!initData) {
+          console.error('No se encontró initData de Telegram');
+          setError("No se detectaron datos de inicialización de Telegram.");
+          return;
+        }
+
+        console.log('Realizando petición a la API...');
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_URL}/users/telegram/${user.id}`,
           {
             withCredentials: true,
             headers: {
               "Content-Type": "application/json",
+              "X-Telegram-Init-Data": initData,
             },
           }
         );
-        console.log('Test de conexión:', testResponse.data);
-      } catch (testError) {
-        console.error('Error en test de conexión:', testError);
-        setError("No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet.");
-        return;
-      }
 
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/users/telegram/${user.id}`,
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-            "X-Telegram-Init-Data": initData,
-          },
+        console.log('Respuesta de la API:', res.data);
+        
+        if (!res.data) {
+          console.error('La respuesta de la API está vacía');
+          setError("No se pudieron obtener los datos del perfil.");
+          return;
         }
-      );
 
-      console.log('Respuesta de la API:', res.data);
-      
-      if (!res.data) {
-        console.error('La respuesta de la API está vacía');
-        setError("No se pudieron obtener los datos del perfil.");
-        return;
-      }
-
-      setPerfil(res.data);
-      setError("");
-    } catch (err) {
-      console.error('Error detallado:', err);
-      
-      if (axios.isAxiosError(err)) {
-        if (err.response) {
-          // El servidor respondió con un código de estado fuera del rango 2xx
-          console.error('Error de respuesta:', err.response.data);
-          console.error('Status:', err.response.status);
-          console.error('Headers:', err.response.headers);
-          
-          if (err.response.status === 404) {
-            setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
-          } else if (err.response.status === 401) {
-            setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
-          } else if (err.response.status === 500) {
-            setError("Error del servidor. Por favor, intenta más tarde.");
+        setPerfil(res.data);
+        setError("");
+      } catch (err) {
+        console.error('Error detallado:', err);
+        
+        if (axios.isAxiosError(err)) {
+          if (err.response) {
+            console.error('Error de respuesta:', err.response.data);
+            console.error('Status:', err.response.status);
+            console.error('Headers:', err.response.headers);
+            
+            if (err.response.status === 404) {
+              setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
+            } else if (err.response.status === 401) {
+              setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
+            } else if (err.response.status === 500) {
+              setError("Error del servidor. Por favor, intenta más tarde.");
+            } else {
+              setError(`Error al cargar el perfil: ${err.response.data?.detail || 'Error desconocido'}`);
+            }
+          } else if (err.request) {
+            console.error('Error de red:', err.request);
+            setError("Error de conexión. Por favor, verifica tu conexión a internet.");
           } else {
-            setError(`Error al cargar el perfil: ${err.response.data?.detail || 'Error desconocido'}`);
+            console.error('Error de configuración:', err.message);
+            setError("Error al configurar la petición. Por favor, intenta nuevamente.");
           }
-        } else if (err.request) {
-          // La petición fue hecha pero no se recibió respuesta
-          console.error('Error de red:', err.request);
-          setError("Error de conexión. Por favor, verifica tu conexión a internet.");
         } else {
-          // Algo pasó en la configuración de la petición
-          console.error('Error de configuración:', err.message);
-          setError("Error al configurar la petición. Por favor, intenta nuevamente.");
+          console.error('Error no relacionado con Axios:', err);
+          setError("Error desconocido al cargar el perfil.");
         }
-      } else {
-        console.error('Error no relacionado con Axios:', err);
-        setError("Error desconocido al cargar el perfil.");
+      } finally {
+        setIsLoading(false);
       }
-    }
-  };
+    };
 
-  useEffect(() => {
-    if (user?.id && initData) {
-      cargarPerfil();
-    } else {
-      console.log('Faltan datos de usuario o initData');
-      setError("No se detectó sesión de Telegram.");
-    }
-  }, []);
+    cargarPerfil();
+  }, [webApp, user, initData]);
 
   const handleEditarClick = (producto: Producto) => {
     setEditando(producto);
@@ -182,110 +168,59 @@ export default function Profile() {
     }
   };
 
-  if (error) return <p className="text-red-500">{error}</p>;
-  if (!perfil) return <p>Cargando perfil...</p>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+          <strong className="font-bold">Error:</strong>
+          <span className="block sm:inline"> {error}</span>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Recargar
+        </button>
+      </div>
+    );
+  }
+
+  if (!perfil) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative">
+          <strong className="font-bold">Atención:</strong>
+          <span className="block sm:inline"> No se encontró el perfil.</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-2">Hola @{perfil.username}</h2>
-      
-      <UpdateWallet
-        telegramId={perfil.telegram_id}
-        currentWallet={perfil.wallet}
-        onWalletUpdated={cargarPerfil}
-      />
-
-      <h3 className="text-xl font-semibold mb-2 mt-4">Tus productos:</h3>
-      <ul className="space-y-4">
-        {perfil.productos.map((p) => (
-          <li
-            key={p.id}
-            className="p-4 border rounded shadow-sm bg-white flex justify-between items-start"
-          >
-            <div>
-              <h4 className="font-bold text-lg">{p.nombre}</h4>
-              <p className="text-sm">{p.descripcion}</p>
-              <p className="mt-1 text-green-600 font-semibold">{p.precio} MNT</p>
-            </div>
-            <div className="flex flex-col gap-1 ml-4">
-              <button
-                onClick={() => handleEditarClick(p)}
-                className="text-blue-500 hover:underline text-sm"
-              >
-                Editar
-              </button>
-              <button
-                onClick={() => handleEliminarProducto(p.id)}
-                className="text-red-500 hover:underline text-sm"
-              >
-                Eliminar
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <FormCrearProducto
-        telegramId={perfil.telegram_id}
-        onProductoCreado={cargarPerfil}
-      />
-
-      {editando && (
-        <div className="mt-6 p-4 border rounded bg-gray-100">
-          <h4 className="font-semibold mb-2">Editando: {editando.nombre}</h4>
-          <form onSubmit={handleEditarProducto} className="space-y-2">
-            <input
-              type="text"
-              value={nuevoProducto.nombre}
-              onChange={(e) =>
-                setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })
-              }
-              className="w-full p-2 border rounded"
-              placeholder="Nombre"
-              required
-            />
-            <textarea
-              value={nuevoProducto.descripcion}
-              onChange={(e) =>
-                setNuevoProducto({
-                  ...nuevoProducto,
-                  descripcion: e.target.value,
-                })
-              }
-              className="w-full p-2 border rounded"
-              placeholder="Descripción"
-              required
-            />
-            <input
-              type="number"
-              value={nuevoProducto.precio}
-              onChange={(e) =>
-                setNuevoProducto({
-                  ...nuevoProducto,
-                  precio: parseFloat(e.target.value),
-                })
-              }
-              className="w-full p-2 border rounded"
-              placeholder="Precio"
-              required
-            />
-            <div className="flex gap-2 mt-2">
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                Guardar
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditando(null)}
-                className="text-red-500"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl">
+        <div className="p-8">
+          <div className="uppercase tracking-wide text-sm text-indigo-500 font-semibold">
+            Perfil de Usuario
+          </div>
+          <div className="mt-4">
+            <p className="text-gray-600">
+              <span className="font-semibold">ID de Telegram:</span> {perfil.telegram_id}
+            </p>
+            <p className="text-gray-600">
+              <span className="font-semibold">Wallet:</span> {perfil.wallet}
+            </p>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
