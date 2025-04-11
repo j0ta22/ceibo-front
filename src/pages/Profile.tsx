@@ -124,22 +124,34 @@ export default function Profile() {
         const testResponse = await axios.get(
           `${import.meta.env.VITE_API_URL}/users/health`,
           {
+            timeout: 5000, // 5 segundos de timeout
             headers: {
               "X-Telegram-Init-Data": initData,
             },
           }
         );
-        addDebugLog('Test de conexión exitoso', 'success');
+        addDebugLog(`Test de conexión exitoso: ${JSON.stringify(testResponse.data)}`, 'success');
       } catch (testError) {
         addDebugLog('Error en test de conexión', 'error');
         if (axios.isAxiosError(testError)) {
-          if (testError.response) {
+          if (testError.code === 'ECONNABORTED') {
+            addDebugLog('Error: Timeout al conectar con el servidor', 'error');
+            setError("El servidor no responde. Por favor, intenta más tarde.");
+          } else if (testError.response) {
             addDebugLog(`Error ${testError.response.status}: ${JSON.stringify(testError.response.data)}`, 'error');
+            setError(`Error del servidor: ${testError.response.status}`);
           } else if (testError.request) {
             addDebugLog('Error de red: No se recibió respuesta del servidor', 'error');
+            addDebugLog(`Detalles del error: ${testError.message}`, 'error');
+            setError("No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet.");
+          } else {
+            addDebugLog(`Error de configuración: ${testError.message}`, 'error');
+            setError("Error al configurar la petición. Por favor, intenta nuevamente.");
           }
+        } else {
+          addDebugLog(`Error desconocido: ${String(testError)}`, 'error');
+          setError("Error desconocido al conectar con el servidor.");
         }
-        setError("No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet.");
         return;
       }
 
