@@ -5,10 +5,19 @@ import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import './index.css';
 
-// Verificar si estamos en un entorno de Telegram
-if (window.Telegram && window.Telegram.WebApp) {
-  window.Telegram.WebApp.ready();
-}
+// Función para inicializar Telegram WebApp de manera segura
+const initializeTelegramWebApp = () => {
+  try {
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+    }
+  } catch (error) {
+    console.warn('Telegram WebApp no está disponible:', error);
+  }
+};
+
+// Inicializar Telegram WebApp
+initializeTelegramWebApp();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
