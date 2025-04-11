@@ -35,6 +35,7 @@ interface DebugInfo {
 // Configurar Axios globalmente
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.timeout = 10000; // 10 segundos de timeout
 
 // Agregar interceptor para logs de todas las peticiones
 axios.interceptors.request.use(request => {
@@ -149,7 +150,11 @@ export default function Profile() {
         const testResponse = await axios.get(
           `${import.meta.env.VITE_API_URL}/users/health`,
           {
-            timeout: 5000, // 5 segundos de timeout
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            timeout: 10000, // 10 segundos de timeout
           }
         );
         addDebugLog(`Test de conexión exitoso: ${JSON.stringify(testResponse.data)}`, 'success');
@@ -178,6 +183,9 @@ export default function Profile() {
           } else if (testError.request) {
             addDebugLog('Error de red: No se recibió respuesta del servidor', 'error');
             addDebugLog(`Detalles del error: ${testError.message}`, 'error');
+            addDebugLog(`URL intentada: ${testError.config?.url}`, 'error');
+            addDebugLog(`Método: ${testError.config?.method}`, 'error');
+            addDebugLog(`Headers: ${JSON.stringify(testError.config?.headers)}`, 'error');
             setError("No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet.");
           } else {
             addDebugLog(`Error de configuración: ${testError.message}`, 'error');
