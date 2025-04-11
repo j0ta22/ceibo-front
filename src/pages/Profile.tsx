@@ -40,10 +40,9 @@ export default function Profile() {
 
   const cargarPerfil = async () => {
     try {
-      console.log('Intentando cargar perfil para usuario:', user?.id);
-      console.log('Init data:', initData);
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/users/telegram/${user?.id}`,
+      // Primero, obtener información de depuración
+      const debugRes = await axios.get(
+        `${import.meta.env.VITE_API_URL}/users/debug`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -51,8 +50,24 @@ export default function Profile() {
           },
         }
       );
-      console.log('Respuesta de la API:', res.data);
-      setPerfil(res.data);
+      
+      console.log('Información de depuración:', debugRes.data);
+      
+      // Si hay usuarios en la base de datos, intentar cargar el perfil
+      if (debugRes.data.total_usuarios > 0) {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_URL}/users/telegram/${user?.id}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-Telegram-Init-Data": initData,
+            },
+          }
+        );
+        setPerfil(res.data);
+      } else {
+        setError("No hay usuarios registrados en la base de datos.");
+      }
     } catch (err) {
       console.error('Error al cargar perfil:', err);
       if (axios.isAxiosError(err)) {
