@@ -35,7 +35,10 @@ interface DebugInfo {
 // Configurar Axios globalmente
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
-axios.defaults.timeout = 5000; // 5 segundos de timeout
+axios.defaults.timeout = 10000; // 10 segundos de timeout
+axios.defaults.validateStatus = function (status) {
+  return status >= 200 && status < 500; // Aceptar todos los códigos de estado excepto errores del servidor
+};
 
 // Agregar interceptor para logs de todas las peticiones
 axios.interceptors.request.use(request => {
@@ -43,7 +46,9 @@ axios.interceptors.request.use(request => {
     url: request.url,
     method: request.method,
     headers: request.headers,
-    data: request.data
+    data: request.data,
+    timeout: request.timeout,
+    withCredentials: request.withCredentials
   });
   return request;
 });
@@ -52,17 +57,32 @@ axios.interceptors.response.use(
   response => {
     console.log('Respuesta recibida:', {
       status: response.status,
+      statusText: response.statusText,
       data: response.data,
-      headers: response.headers
+      headers: response.headers,
+      config: {
+        url: response.config.url,
+        method: response.config.method,
+        headers: response.config.headers
+      }
     });
     return response;
   },
   error => {
     console.error('Error en la petición:', {
       message: error.message,
+      code: error.code,
       response: error.response?.data,
       status: error.response?.status,
-      headers: error.response?.headers
+      statusText: error.response?.statusText,
+      headers: error.response?.headers,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        timeout: error.config?.timeout,
+        withCredentials: error.config?.withCredentials
+      }
     });
     return Promise.reject(error);
   }
@@ -153,8 +173,10 @@ export default function Profile() {
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': initData
             },
-            timeout: 5000, // 5 segundos de timeout
+            timeout: 10000, // 10 segundos de timeout
+            withCredentials: true
           }
         );
         addDebugLog(`Test de conexión exitoso: ${JSON.stringify(testResponse.data)}`, 'success');
@@ -173,6 +195,8 @@ export default function Profile() {
             addDebugLog(`URL intentada: ${testError.config?.url}`, 'error');
             addDebugLog(`Método: ${testError.config?.method}`, 'error');
             addDebugLog(`Headers: ${JSON.stringify(testError.config?.headers)}`, 'error');
+            addDebugLog(`Timeout: ${testError.config?.timeout}`, 'error');
+            addDebugLog(`WithCredentials: ${testError.config?.withCredentials}`, 'error');
             setError("No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet.");
           } else {
             addDebugLog(`Error de configuración: ${testError.message}`, 'error');
