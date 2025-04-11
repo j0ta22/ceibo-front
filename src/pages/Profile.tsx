@@ -86,11 +86,35 @@ export default function Profile() {
   const user = webApp?.initDataUnsafe?.user;
   const initData = webApp?.initData;
 
-  console.log('=== Datos de Telegram ===');
-  console.log('WebApp disponible:', !!webApp);
-  console.log('Usuario:', user);
-  console.log('InitData:', initData);
-  console.log('=== Fin Datos de Telegram ===');
+  // Verificar si estamos dentro de Telegram
+  const isTelegramContext = webApp && user && initData;
+
+  if (!isTelegramContext) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-4 flex items-center justify-center">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl p-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">¡Bienvenido a CeiboPay!</h1>
+          <p className="text-gray-600 mb-4">
+            Esta aplicación está diseñada para ser utilizada dentro de Telegram.
+            Por favor, accede a través del bot de Telegram para continuar.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800">
+              Si ya tienes el bot, puedes acceder a través de:
+            </p>
+            <a 
+              href="https://t.me/ceibopay_bot" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 font-medium"
+            >
+              @ceibopay_bot
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const cargarPerfil = async (): Promise<void> => {
     try {
@@ -117,12 +141,13 @@ export default function Profile() {
 
       addDebugLog(`ID de usuario: ${user.id}`, 'info');
       addDebugLog(`API URL: ${import.meta.env.VITE_API_URL}`, 'info');
+      addDebugLog(`InitData: ${initData}`, 'info');
 
       // Verificar conexión con la API
       try {
         addDebugLog('Realizando test de conexión...', 'info');
         const testResponse = await axios.get(
-          `${import.meta.env.VITE_API_URL}/health`,
+          `${import.meta.env.VITE_API_URL}/users/health`,
           {
             timeout: 5000, // 5 segundos de timeout
           }
@@ -165,54 +190,60 @@ export default function Profile() {
         return;
       }
 
-      addDebugLog('Realizando petición a la API...', 'info');
-      const res = await axios.get<Usuario>(
-        `${import.meta.env.VITE_API_URL}/users/telegram/${user.id}`,
-        {
-          headers: {
-            "X-Telegram-Init-Data": initData,
-          },
-        }
-      );
-
-      addDebugLog('Respuesta de la API recibida', 'success');
-      
-      if (!res.data) {
-        addDebugLog('La respuesta de la API está vacía', 'error');
-        setError("No se pudieron obtener los datos del perfil.");
-        return;
-      }
-
-      setPerfil(res.data);
-      setError("");
-      addDebugLog('Perfil cargado exitosamente', 'success');
-    } catch (err) {
-      addDebugLog('Error al cargar el perfil', 'error');
-      
-      if (axios.isAxiosError(err)) {
-        if (err.response) {
-          addDebugLog(`Error ${err.response.status}: ${JSON.stringify(err.response.data)}`, 'error');
-          
-          if (err.response.status === 404) {
-            setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
-          } else if (err.response.status === 401) {
-            setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
-          } else if (err.response.status === 500) {
-            setError("Error del servidor. Por favor, intenta más tarde.");
-          } else {
-            setError(`Error al cargar el perfil: ${err.response.data?.detail || 'Error desconocido'}`);
+      // Obtener datos del usuario
+      try {
+        addDebugLog('Obteniendo datos del usuario...', 'info');
+        const res = await axios.get<Usuario>(
+          `${import.meta.env.VITE_API_URL}/users/telegram/${user.id}`,
+          {
+            headers: {
+              "X-Telegram-Init-Data": initData,
+            },
           }
-        } else if (err.request) {
-          addDebugLog('Error de red: No se recibió respuesta del servidor', 'error');
-          setError("Error de conexión. Por favor, verifica tu conexión a internet.");
-        } else {
-          addDebugLog(`Error de configuración: ${err.message}`, 'error');
-          setError("Error al configurar la petición. Por favor, intenta nuevamente.");
+        );
+
+        addDebugLog(`Datos del usuario recibidos: ${JSON.stringify(res.data)}`, 'success');
+        
+        if (!res.data) {
+          addDebugLog('La respuesta de la API está vacía', 'error');
+          setError("No se pudieron obtener los datos del perfil.");
+          return;
         }
-      } else {
-        addDebugLog('Error desconocido al cargar el perfil', 'error');
-        setError("Error desconocido al cargar el perfil.");
+
+        setPerfil(res.data);
+        setError("");
+        addDebugLog('Perfil cargado exitosamente', 'success');
+      } catch (err) {
+        addDebugLog('Error al obtener datos del usuario', 'error');
+        
+        if (axios.isAxiosError(err)) {
+          if (err.response) {
+            addDebugLog(`Error ${err.response.status}: ${JSON.stringify(err.response.data)}`, 'error');
+            
+            if (err.response.status === 404) {
+              setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
+            } else if (err.response.status === 401) {
+              setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
+            } else if (err.response.status === 500) {
+              setError("Error del servidor. Por favor, intenta más tarde.");
+            } else {
+              setError(`Error al cargar el perfil: ${err.response.data?.detail || 'Error desconocido'}`);
+            }
+          } else if (err.request) {
+            addDebugLog('Error de red: No se recibió respuesta del servidor', 'error');
+            setError("Error de conexión. Por favor, verifica tu conexión a internet.");
+          } else {
+            addDebugLog(`Error de configuración: ${err.message}`, 'error');
+            setError("Error al configurar la petición. Por favor, intenta nuevamente.");
+          }
+        } else {
+          addDebugLog('Error desconocido al cargar el perfil', 'error');
+          setError("Error desconocido al cargar el perfil.");
+        }
       }
+    } catch (err) {
+      addDebugLog(`Error general: ${String(err)}`, 'error');
+      setError("Error inesperado al cargar el perfil.");
     } finally {
       setIsLoading(false);
     }
