@@ -122,15 +122,25 @@ export default function Profile() {
       try {
         addDebugLog('Realizando test de conexión...', 'info');
         const testResponse = await axios.get(
-          `${import.meta.env.VITE_API_URL}/users/health`,
+          `${import.meta.env.VITE_API_URL}/health`,
           {
             timeout: 5000, // 5 segundos de timeout
-            headers: {
-              "X-Telegram-Init-Data": initData,
-            },
           }
         );
         addDebugLog(`Test de conexión exitoso: ${JSON.stringify(testResponse.data)}`, 'success');
+        
+        // Verificar si la base de datos y el bot token están configurados
+        if (!testResponse.data.database_configured) {
+          addDebugLog('Error: La base de datos no está configurada', 'error');
+          setError("Error del servidor: La base de datos no está configurada.");
+          return;
+        }
+        
+        if (!testResponse.data.bot_token_configured) {
+          addDebugLog('Error: El token del bot no está configurado', 'error');
+          setError("Error del servidor: El token del bot no está configurado.");
+          return;
+        }
       } catch (testError) {
         addDebugLog('Error en test de conexión', 'error');
         if (axios.isAxiosError(testError)) {
