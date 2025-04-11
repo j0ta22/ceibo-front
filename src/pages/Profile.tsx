@@ -7,6 +7,12 @@ const tg = window.Telegram.WebApp;
 const user = tg.initDataUnsafe?.user;
 const initData = tg.initData;
 
+// Agregar logs para depuración
+console.log('Telegram WebApp:', tg);
+console.log('User data:', user);
+console.log('Init data:', initData);
+console.log('API URL:', import.meta.env.VITE_API_URL);
+
 interface Producto {
   id: number;
   nombre: string;
@@ -34,6 +40,7 @@ export default function Profile() {
 
   const cargarPerfil = async () => {
     try {
+      console.log('Intentando cargar perfil para usuario:', user?.id);
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/users/telegram/${user?.id}`,
         {
@@ -43,10 +50,11 @@ export default function Profile() {
           },
         }
       );
+      console.log('Respuesta de la API:', res.data);
       setPerfil(res.data);
     } catch (err) {
+      console.error('Error al cargar perfil:', err);
       setError("No se pudo cargar el perfil.");
-      console.error(err);
     }
   };
 
@@ -54,6 +62,7 @@ export default function Profile() {
     if (user?.id && initData) {
       cargarPerfil();
     } else {
+      console.log('Faltan datos de usuario o initData');
       setError("No se detectó sesión de Telegram.");
     }
   }, []);
