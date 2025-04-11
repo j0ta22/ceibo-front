@@ -42,7 +42,13 @@ export default function Profile() {
     try {
       // Primero, verificar el estado de la base de datos
       const dbCheckRes = await axios.get(
-        `${import.meta.env.VITE_API_URL}/users/db-check`
+        `${import.meta.env.VITE_API_URL}/users/db-check`,
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
       );
       
       if (dbCheckRes.data.status === "error") {
@@ -59,6 +65,7 @@ export default function Profile() {
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/users/telegram/${user?.id}`,
         {
+          withCredentials: true,
           headers: {
             "Content-Type": "application/json",
             "X-Telegram-Init-Data": initData,
@@ -80,11 +87,16 @@ export default function Profile() {
       
       setPerfil(perfilCompleto);
     } catch (err) {
+      console.error('Error al cargar perfil:', err);
       if (axios.isAxiosError(err)) {
         if (err.response?.status === 404) {
           setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
         } else if (err.response?.status === 403) {
           setError("Error de autenticación. Por favor, intenta acceder desde el bot de Telegram.");
+        } else if (err.response?.status === 401) {
+          setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
+        } else if (err.response?.status === 500) {
+          setError("Error del servidor. Por favor, intenta más tarde.");
         } else {
           setError(`Error al cargar el perfil: ${err.response?.data?.detail || err.message}`);
         }
