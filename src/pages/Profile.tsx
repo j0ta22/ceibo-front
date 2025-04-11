@@ -40,30 +40,25 @@ export default function Profile() {
 
   const cargarPerfil = async () => {
     try {
-      // Primero, verificar el estado de la base de datos
-      const dbCheckRes = await axios.get(
-        `${import.meta.env.VITE_API_URL}/users/db-check`,
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      
-      if (dbCheckRes.data.status === "error") {
-        setError(`Error en la base de datos: ${dbCheckRes.data.error}`);
+      console.log('Iniciando carga de perfil...');
+      console.log('Telegram ID:', user?.id);
+      console.log('Init Data:', initData);
+      console.log('API URL:', import.meta.env.VITE_API_URL);
+
+      if (!user?.id) {
+        console.error('No se encontró el ID de usuario de Telegram');
+        setError("No se detectó sesión de Telegram.");
         return;
       }
-      
-      if (dbCheckRes.data.total_usuarios === 0) {
-        setError("No hay usuarios registrados en la base de datos. Por favor, crea una wallet desde el bot.");
+
+      if (!initData) {
+        console.error('No se encontró initData de Telegram');
+        setError("No se detectaron datos de inicialización de Telegram.");
         return;
       }
-      
-      // Si hay usuarios, intentar cargar el perfil
+
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/users/telegram/${user?.id}`,
+        `${import.meta.env.VITE_API_URL}/users/telegram/${user.id}`,
         {
           withCredentials: true,
           headers: {
@@ -72,35 +67,47 @@ export default function Profile() {
           },
         }
       );
+
+      console.log('Respuesta de la API:', res.data);
       
-      // Verificar que los datos necesarios estén presentes
-      if (!res.data || !res.data.telegram_id || !res.data.wallet) {
-        setError("Datos del perfil incompletos. Por favor, crea una wallet desde el bot.");
+      if (!res.data) {
+        console.error('La respuesta de la API está vacía');
+        setError("No se pudieron obtener los datos del perfil.");
         return;
       }
-      
-      // Asegurarse de que los productos estén inicializados
-      const perfilCompleto = {
-        ...res.data,
-        productos: res.data.productos || []
-      };
-      
-      setPerfil(perfilCompleto);
+
+      setPerfil(res.data);
+      setError("");
     } catch (err) {
-      console.error('Error al cargar perfil:', err);
+      console.error('Error detallado:', err);
+      
       if (axios.isAxiosError(err)) {
-        if (err.response?.status === 404) {
-          setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
-        } else if (err.response?.status === 403) {
-          setError("Error de autenticación. Por favor, intenta acceder desde el bot de Telegram.");
-        } else if (err.response?.status === 401) {
-          setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
-        } else if (err.response?.status === 500) {
-          setError("Error del servidor. Por favor, intenta más tarde.");
+        if (err.response) {
+          // El servidor respondió con un código de estado fuera del rango 2xx
+          console.error('Error de respuesta:', err.response.data);
+          console.error('Status:', err.response.status);
+          console.error('Headers:', err.response.headers);
+          
+          if (err.response.status === 404) {
+            setError("Usuario no encontrado. Por favor, crea una wallet desde el bot.");
+          } else if (err.response.status === 401) {
+            setError("No autorizado. Por favor, verifica que estés accediendo desde el bot de Telegram.");
+          } else if (err.response.status === 500) {
+            setError("Error del servidor. Por favor, intenta más tarde.");
+          } else {
+            setError(`Error al cargar el perfil: ${err.response.data?.detail || 'Error desconocido'}`);
+          }
+        } else if (err.request) {
+          // La petición fue hecha pero no se recibió respuesta
+          console.error('Error de red:', err.request);
+          setError("Error de conexión. Por favor, verifica tu conexión a internet.");
         } else {
-          setError(`Error al cargar el perfil: ${err.response?.data?.detail || err.message}`);
+          // Algo pasó en la configuración de la petición
+          console.error('Error de configuración:', err.message);
+          setError("Error al configurar la petición. Por favor, intenta nuevamente.");
         }
       } else {
+        console.error('Error no relacionado con Axios:', err);
         setError("Error desconocido al cargar el perfil.");
       }
     }
